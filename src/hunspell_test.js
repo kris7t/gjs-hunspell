@@ -28,4 +28,13 @@ spell = new Hun.Spell("/usr/share/hunspell/en_US.aff",
 		      "/usr/share/hunspell/en_US.dic");
 
 print("\nanalyze foxes:");
-print(spell.analyze("foxes"));
+let foxes_morph = spell.analyze("foxes");
+print(foxes_morph);
+
+print("\nstem foxes:");
+print(spell.stem("foxes"));
+print(spell.stem(foxes_morph));
+
+print("\ngenerate car, foxes:");
+print(spell.generate("car", "foxes"));
+print(spell.generate("car", foxes_morph));
