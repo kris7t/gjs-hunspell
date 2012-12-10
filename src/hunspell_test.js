@@ -1,10 +1,12 @@
 
 const Hun = imports.hunspell;
 
+print("experimental = " + Hun.Spell.experimental);
+
 let spell = new Hun.Spell("/usr/share/hunspell/hu_HU.aff",
 			  "/usr/share/hunspell/hu_HU.dic");
 
-print("version = " + spell.version);
+print("\nversion = " + spell.version);
 print("dic_encoding = " + spell.dic_encoding);
 print("wordchars = " + spell.wordchars);
 print("langnum = " + spell.langnum);
@@ -45,10 +47,11 @@ print("\nadd to dictionary:");
 print(spell("frob")); // => false
 spell.add("frob");
 print(spell("frob")); // => Object
+print(spell("froben")); // => true
 spell.remove("frob");
 print(spell("frob")); // => false
-spell.add_with_affix("frob", "car");
-print(spell("frobs")); // => Object
+spell.add_with_affix("frob", "ox");
+print(spell("froben")); // => Object
 
 print("\nadd another dictionary:");
 print(spell("majom"));

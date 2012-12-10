@@ -679,7 +679,6 @@ gjs_hunspell_spell_add(JSContext *context,
     return JS_TRUE;
 }
 
-
 static JSBool
 gjs_hunspell_spell_add_with_affix(JSContext *context,
 				  uintN argc,
@@ -693,7 +692,6 @@ gjs_hunspell_spell_add_with_affix(JSContext *context,
 
     return JS_TRUE;
 }
-
 
 static JSBool
 gjs_hunspell_spell_remove(JSContext *context,
@@ -709,15 +707,76 @@ gjs_hunspell_spell_remove(JSContext *context,
     return JS_TRUE;
 }
 
-static JSBool
-gjs_hunspell_spell_unimplemented(JSContext *context,
-				 uintN argc,
-				 jsval *vp)
-{
-    JS_ReportError(context, "this method is unimplemented");
+#ifdef HUNSPELL_EXPERIMENTAL
 
-    return JS_FALSE;
+// While put_word_suffix(const char *, const char *) is declared in
+// hunspell.hxx, libhunspell-1.3.so does not actually export that symbol.
+// To avoid error when loading the shared library, linking to
+// Hunspell::put_word_suffix is disabled here.
+#if 0
+static JSBool
+gjs_hunspell_spell_put_word_suffix(JSContext *context,
+				   uintN argc,
+				   jsval *vp)
+{
+    GJS_HUNSPELL_METHOD_WITH_2_ARGUMENTS;
+
+    priv->hunspell.put_word_suffix(word.c_str(), word2.c_str());
+
+    JS_SET_RVAL(context, vp, JSVAL_VOID);
+
+    return JS_TRUE;
 }
+#endif
+
+static JSBool
+gjs_hunspell_spell_morph_with_correction(JSContext *context,
+					 uintN argc,
+					 jsval *vp)
+{
+    GJS_HUNSPELL_METHOD_WITH_1_ARGUMENT;
+
+    char *morph = priv->hunspell.morph_with_correction(word.c_str());
+    
+    if (morph == nullptr)
+	return JS_FALSE;
+
+    JSString *jsMorph = string_to_js_convert(context, dic_encoding, morph);
+
+    JS_SET_RVAL(context, vp, STRING_TO_JSVAL(jsMorph));
+    
+    return JS_TRUE;
+}
+
+static JSBool
+gjs_hunspell_spell_suggest_auto(JSContext *context,
+				uintN argc,
+				jsval *vp)
+{
+    GJS_HUNSPELL_SUGGEST_PRELUDE;
+
+    int n = priv->hunspell.suggest_auto(&slst, word.c_str());
+
+    GJS_HUNSPELL_SUGGEST_FINISH;
+
+    return JS_TRUE;
+}
+
+static JSBool
+gjs_hunspell_spell_suggest_pos_stems(JSContext *context,
+				     uintN argc,
+				     jsval *vp)
+{
+    GJS_HUNSPELL_SUGGEST_PRELUDE;
+
+    int n = priv->hunspell.suggest_pos_stems(&slst, word.c_str());
+
+    GJS_HUNSPELL_SUGGEST_FINISH;
+
+    return JS_TRUE;
+}
+
+#endif
 
 static JSBool
 gjs_hunspell_spell_constructor(JSContext *context,
@@ -839,7 +898,7 @@ static JSFunctionSpec gjs_hunspell_spell_proto_funcs[] = {
     {
 	"add_dic",
 	gjs_hunspell_spell_add_dic,
-	1,
+	2,
 	JSPROP_ENUMERATE
 	
     },
@@ -873,7 +932,7 @@ static JSFunctionSpec gjs_hunspell_spell_proto_funcs[] = {
     {
 	"generate",
 	gjs_hunspell_spell_generate,
-	1,
+	2,
 	JSPROP_ENUMERATE
 	
     },
@@ -887,7 +946,7 @@ static JSFunctionSpec gjs_hunspell_spell_proto_funcs[] = {
     {
 	"add_with_affix",
 	gjs_hunspell_spell_add_with_affix,
-	1,
+	2,
 	JSPROP_ENUMERATE
 	
     },
@@ -898,6 +957,34 @@ static JSFunctionSpec gjs_hunspell_spell_proto_funcs[] = {
 	JSPROP_ENUMERATE
 	
     },
+#ifdef HUNSPELL_EXPERIMENTAL
+#if 0
+    {
+	"put_word_suffix",
+	gjs_hunspell_spell_put_word_suffix,
+	2,
+	JSPROP_ENUMERATE
+    },
+#endif
+    {
+	"morph_with_correction",
+	gjs_hunspell_spell_morph_with_correction,
+	1,
+	JSPROP_ENUMERATE
+    },
+    {
+	"suggest_auto",
+	gjs_hunspell_spell_suggest_auto,
+	1,
+	JSPROP_ENUMERATE
+    },
+    {
+	"suggest_pos_stems",
+	gjs_hunspell_spell_suggest_pos_stems,
+	1,
+	JSPROP_ENUMERATE
+    },
+#endif
     { nullptr, nullptr, 0, 0 }
 };
 
@@ -962,7 +1049,18 @@ gjs_define_hunspell_stuff(JSContext *context,
 			       gjs_hunspell_spell_class.name,
 			       val, nullptr, nullptr,
 			       GJS_MODULE_PROP_FLAGS))
-	    return false;
+	    return JS_FALSE;
+
+	if (!JS_DefineProperty(context, JSVAL_TO_OBJECT(val),
+			       "experimental",
+#ifdef HUNSPELL_EXPERIMENTAL
+			       JSVAL_TRUE,
+#else
+			       JSVAL_FALSE,
+#endif
+			       nullptr, nullptr,
+			       GJS_MODULE_PROP_FLAGS))
+	    return JS_FALSE;
     }
 
     return JS_TRUE;
