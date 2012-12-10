@@ -1,4 +1,6 @@
 
+#include "config.h"
+
 #include <algorithm>
 #include <string>
 #include <vector>
@@ -469,7 +471,7 @@ gjs_hunspell_spell_spell_impl(JSContext *context,
     GjsHunspellSpell *priv = priv_from_js(context, object, nullptr);
 
     if (priv == nullptr)
-	return false;
+	return JS_FALSE;
 
     JSString *jsWord;
     if (!JS_ConvertArguments(context, argc, argv, "S", &jsWord)) {
