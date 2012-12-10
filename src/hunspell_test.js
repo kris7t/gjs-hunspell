@@ -7,6 +7,8 @@ let spell = new Hun.Spell("/usr/share/hunspell/hu_HU.aff",
 print("version = " + spell.version);
 print("dic_encoding = " + spell.dic_encoding);
 print("wordchars = " + spell.wordchars);
+print("langnum = " + spell.langnum);
+print("lang = " + spell.lang);
 
 print("\nspell arvizturokkel:");
 print(spell.spell("arvizturokkel"));
@@ -47,3 +49,8 @@ spell.remove("frob");
 print(spell("frob")); // => false
 spell.add_with_affix("frob", "car");
 print(spell("frobs")); // => Object
+
+print("\nadd another dictionary:");
+print(spell("majom"));
+spell.add_dic("/usr/share/hunspell/hu_HU.dic");
+print(spell("majom"));

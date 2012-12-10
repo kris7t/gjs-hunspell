@@ -56,7 +56,7 @@ static GjsHunspellSpell *priv_from_js(JSContext *context,
 				      JSObject *object,
 				      jsval *argv);
 
-static const size_t buffer_size = 500;
+static constexpr size_t buffer_size = 500;
 
 static const char utf16_encoding[] = "UTF-16";
 
@@ -163,7 +163,8 @@ string_vector_to_pointer_vector(std::vector<std::string> &strings)
 {
     std::vector<char *> pointers;
     pointers.reserve(strings.size());
-    std::transform(strings.begin(), strings.end(), std::back_inserter(pointers),
+    std::transform(strings.begin(), strings.end(),
+		   std::back_inserter(pointers),
 		   [](const std::string &string) {
 		       // This is insanely unsafe and may be used to scare
 		       // small children. The main source of the problem is
@@ -185,6 +186,22 @@ string_vector_to_pointer_vector(std::vector<std::string> &strings)
 									\
     if (priv == nullptr)						\
 	return JS_FALSE;
+
+#define GJS_HUNSPELL_PROPERTY(type)					\
+    if (JSVAL_IS_ ## type(*vp))						\
+	return JS_TRUE;							\
+									\
+    GjsHunspellSpell *priv = priv_from_js(context, object, nullptr);	\
+									\
+    if (priv == nullptr)						\
+	return JS_FALSE;						\
+									\
+    jsval idval;							\
+    if (!JS_IdToValue(context, id, &idval))				\
+	return JS_FALSE;						\
+    if (!JSVAL_IS_INT(idval))						\
+	return JS_FALSE;						\
+    int tinyid = JSVAL_TO_INT(idval);
 
 #define GJS_HUNSPELL_METHOD_WITH_1_ARGUMENT				\
     GJS_HUNSPELL_METHOD_VARIABLES					\
@@ -232,11 +249,15 @@ string_vector_to_pointer_vector(std::vector<std::string> &strings)
     									\
     JS_SET_RVAL(context, vp, OBJECT_TO_JSVAL(jsArray));
 
-static const int gjs_hunspell_spell_tinyid_version = 1;
+static constexpr int gjs_hunspell_spell_tinyid_version = 1;
 
-static const int gjs_hunspell_spell_tinyid_dic_encoding = 2;
+static constexpr int gjs_hunspell_spell_tinyid_dic_encoding = 2;
 
-static const int gjs_hunspell_spell_tinyid_wordchars = 3;
+static constexpr int gjs_hunspell_spell_tinyid_wordchars = 3;
+
+static constexpr int gjs_hunspell_spell_tinyid_langnum = 4;
+
+static constexpr int gjs_hunspell_spell_tinyid_lang = 5;
 
 static JSBool
 gjs_hunspell_spell_get_string_prop(JSContext *context,
@@ -244,20 +265,7 @@ gjs_hunspell_spell_get_string_prop(JSContext *context,
 				   jsid id,
 				   jsval *vp)
 {
-    if (JSVAL_IS_STRING(*vp))
-	return JS_TRUE;
-
-    GjsHunspellSpell *priv = priv_from_js(context, object, nullptr);
-
-    if (priv == nullptr)
-	return false;
-
-    jsval idval;
-    if (!JS_IdToValue(context, id, &idval))
-	return JS_FALSE;
-    if (!JSVAL_IS_INT(idval))
-	return JS_FALSE;
-    int tinyid = JSVAL_TO_INT(idval);
+    GJS_HUNSPELL_PROPERTY(STRING);
 
     JSString *jsString = nullptr;
 
@@ -278,6 +286,96 @@ gjs_hunspell_spell_get_string_prop(JSContext *context,
 	jsString = JS_NewUCStringCopyN(context, wordchars, len);
 	break;
     }
+    case gjs_hunspell_spell_tinyid_lang: {
+	const char *lang;
+	int langnum = priv->hunspell.get_langnum();
+        /*
+	  language numbers for language specific codes
+	  see http://l10n.openoffice.org/languages.html
+	*/
+	switch (langnum) {
+	case 96:
+	    lang = "ar";
+	    break;
+	case 100: // custom number
+	    lang = "az";
+	    break;
+	case 41:
+	    lang = "bg";
+	    break;
+	case 37:
+	    lang = "ca";
+	    break;
+	case 72:
+	    lang = "cs";
+	    break;
+	case 45:
+	    lang = "da";
+	    break;
+	case 49:
+	    lang = "de";
+	    break;
+	case 30:
+	    lang = "el";
+	    break;
+	case 1:
+	    lang = "en";
+	    break;
+	case 34:
+	    lang = "es";
+	    break;
+	case 10:
+	    lang = "eu";
+	    break;
+	case 2:
+	    lang = "fr";
+	    break;
+	case 38:
+	    lang = "gl";
+	    break;
+	case 78:
+	    lang = "hr";
+	    break;
+	case 36:
+	    lang = "hu";
+	    break;
+	case 39:
+	    lang = "it";
+	    break;
+	case 99: // custom number
+	    lang = "la";
+	    break;
+	case 101: // custom number
+	    lang = "lv";
+	    break;
+	case 31:
+	    lang = "nl";
+	    break;
+	case 48:
+	    lang = "pl";
+	    break;
+	case 3:
+	    lang = "pt";
+	    break;
+	case 7:
+	    lang = "ru";
+	    break;
+	case 50:
+	    lang = "sv";
+	    break;
+	case 90:
+	    lang = "tr";
+	    break;
+	case 80:
+	    lang = "uk";
+	    break;
+	default:
+	    lang = "xx";
+	    break;
+	}
+	jsString = JS_NewStringCopyZ(context, lang);
+	break;
+    }
     }
 
     if (jsString)
@@ -285,6 +383,78 @@ gjs_hunspell_spell_get_string_prop(JSContext *context,
     else
 	JS_SET_RVAL(context, vp, JSVAL_VOID);
     
+    return JS_TRUE;
+}
+
+static JSBool
+gjs_hunspell_spell_get_int_prop(JSContext *context,
+				JSObject *object,
+				jsid id,
+				jsval *vp)
+{
+    GJS_HUNSPELL_PROPERTY(NUMBER);
+
+    jsint jsInt = 0;
+
+    switch (tinyid) {
+    case gjs_hunspell_spell_tinyid_langnum:
+	jsInt = priv->hunspell.get_langnum();
+	break;
+    default:
+	JS_SET_RVAL(context, vp, JSVAL_VOID);
+	return JS_TRUE;
+    }
+
+    JS_SET_RVAL(context, vp, INT_TO_JSVAL(jsInt));
+
+    return JS_TRUE;
+}
+
+static JSBool
+gjs_hunspell_spell_add_dic(JSContext *context,
+			   uintN argc,
+			   jsval *vp)
+{
+    GJS_HUNSPELL_METHOD_VARIABLES;
+
+    char *dpath = nullptr, *key = nullptr;
+    if (argc < 1) {
+	JS_ReportError(context,
+		       "expected at least 1 argument instead got %d",
+		       argc);
+	return JS_FALSE;
+    } else if (argc == 1) {
+	JSString *jsDpath;
+	if (!JS_ConvertArguments(context, argc, argv, "S",
+				 &jsDpath)) {
+	    JS_ReportError(context,
+			   "Argument error");
+	    return JS_FALSE;
+	}
+	dpath = JS_EncodeString(context, jsDpath);
+
+	priv->hunspell.add_dic(dpath);
+    } else { /* argc >= 2 */
+	JSString *jsDpath, *jsKey;
+	if (!JS_ConvertArguments(context, argc, argv, "SS",
+				 &jsDpath, &jsKey)) {
+	    JS_ReportError(context,
+			   "Argument error");
+	    return JS_FALSE;
+	}
+	dpath = JS_EncodeString(context, jsDpath);
+	key = JS_EncodeString(context, jsKey);
+
+	priv->hunspell.add_dic(dpath, key);
+   }
+
+    if (dpath != nullptr)
+	JS_free(context, dpath);
+    if (key != nullptr)
+	JS_free(context, key);
+
+    JS_SET_RVAL(context, vp, JSVAL_VOID);
+
     return JS_TRUE;
 }
 
@@ -316,7 +486,7 @@ gjs_hunspell_spell_spell_impl(JSContext *context,
     int info;
     int correct = priv->hunspell.spell(word.c_str(), &info, &root);
 
-    if (correct) {
+    if (correct != 0) {
 	JSObject *hash = JS_NewObject(context, nullptr, nullptr, nullptr);
 
 	JS_DefineProperty(context, hash, "compound",
@@ -328,7 +498,8 @@ gjs_hunspell_spell_spell_impl(JSContext *context,
 			  nullptr, nullptr, JSPROP_ENUMERATE);
 
 	JS_DefineProperty(context, hash, "warn",
-			  (info & SPELL_WARN) ? JSVAL_TRUE : JSVAL_FALSE,
+			  (info & SPELL_WARN || correct & HUNSPELL_OK_WARN)
+			  ? JSVAL_TRUE : JSVAL_FALSE,
 			  nullptr, nullptr, JSPROP_ENUMERATE);
 
 	if (root != nullptr) {
@@ -442,8 +613,8 @@ gjs_hunspell_spell_stem(JSContext *context,
 
 static JSBool
 gjs_hunspell_spell_generate(JSContext *context,
-			uintN argc,
-			jsval *vp)
+			    uintN argc,
+			    jsval *vp)
 {
     GJS_HUNSPELL_METHOD_VARIABLES;
 
@@ -645,13 +816,29 @@ static JSPropertySpec gjs_hunspell_spell_proto_props[] = {
 	gjs_hunspell_spell_get_string_prop,
 	nullptr
     },
+    {
+	"langnum",
+	gjs_hunspell_spell_tinyid_langnum,
+	JSPROP_ENUMERATE |
+	JSPROP_READONLY,
+	gjs_hunspell_spell_get_int_prop,
+	nullptr
+    },
+    {
+	"lang",
+	gjs_hunspell_spell_tinyid_lang,
+	JSPROP_ENUMERATE |
+	JSPROP_READONLY,
+	gjs_hunspell_spell_get_string_prop,
+	nullptr
+    },
     { nullptr, 0, 0, nullptr, nullptr }
 };
 
 static JSFunctionSpec gjs_hunspell_spell_proto_funcs[] = {
     {
 	"add_dic",
-	gjs_hunspell_spell_unimplemented, // TODO
+	gjs_hunspell_spell_add_dic,
 	1,
 	JSPROP_ENUMERATE
 	
