@@ -38,3 +38,12 @@ print(spell.stem(foxes_morph));
 print("\ngenerate car, foxes:");
 print(spell.generate("car", "foxes"));
 print(spell.generate("car", foxes_morph));
+
+print("\nadd to dictionary:");
+print(spell("frob")); // => false
+spell.add("frob");
+print(spell("frob")); // => Object
+spell.remove("frob");
+print(spell("frob")); // => false
+spell.add_with_affix("frob", "car");
+print(spell("frobs")); // => Object

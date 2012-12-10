@@ -181,13 +181,13 @@ string_vector_to_pointer_vector(std::vector<std::string> &strings)
 #define GJS_HUNSPELL_METHOD_VARIABLES					\
     jsval *argv = JS_ARGV(context, vp);					\
     JSObject *object = JS_THIS_OBJECT(context, vp);			\
-    GjsHunspellSpell *priv = priv_from_js(context, object, argv);
-
-#define GJS_HUNSPELL_SUGGEST_PRELUDE					\
-    GJS_HUNSPELL_METHOD_VARIABLES					\
+    GjsHunspellSpell *priv = priv_from_js(context, object, argv);	\
 									\
     if (priv == nullptr)						\
-	return JS_FALSE;						\
+	return JS_FALSE;
+
+#define GJS_HUNSPELL_METHOD_WITH_1_ARGUMENT				\
+    GJS_HUNSPELL_METHOD_VARIABLES					\
 									\
     JSString *jsWord;							\
     if (!JS_ConvertArguments(context, argc, argv, "S", &jsWord)) {	\
@@ -199,7 +199,28 @@ string_vector_to_pointer_vector(std::vector<std::string> &strings)
     const char *dic_encoding = priv->hunspell.get_dic_encoding();	\
 									\
     std::string word(js_to_string_convert(context, dic_encoding,	\
+					  jsWord));
+
+#define GJS_HUNSPELL_METHOD_WITH_2_ARGUMENTS				\
+    GJS_HUNSPELL_METHOD_VARIABLES					\
+									\
+    JSString *jsWord, *jsWord2;						\
+    if (!JS_ConvertArguments(context, argc, argv, "SS",			\
+			     &jsWord, &jsWord2)) {			\
+	JS_ReportError(context,						\
+		       "Expected 2  String arguments");			\
+	return JS_FALSE;						\
+    }									\
+									\
+    const char *dic_encoding = priv->hunspell.get_dic_encoding();	\
+									\
+    std::string word(js_to_string_convert(context, dic_encoding,	\
 					  jsWord));			\
+    std::string word2(js_to_string_convert(context, dic_encoding,	\
+					  jsWord2));
+
+#define GJS_HUNSPELL_SUGGEST_PRELUDE					\
+    GJS_HUNSPELL_METHOD_WITH_1_ARGUMENT					\
 									\
     char **slst;
 
@@ -207,7 +228,7 @@ string_vector_to_pointer_vector(std::vector<std::string> &strings)
     JSObject *jsArray = string_vector_to_js(context, dic_encoding,	\
 					    slst, n);			\
     									\
-    priv->hunspell.free_list(&slst, n);				\
+    priv->hunspell.free_list(&slst, n);					\
     									\
     JS_SET_RVAL(context, vp, OBJECT_TO_JSVAL(jsArray));
 
@@ -227,6 +248,9 @@ gjs_hunspell_spell_get_string_prop(JSContext *context,
 	return JS_TRUE;
 
     GjsHunspellSpell *priv = priv_from_js(context, object, nullptr);
+
+    if (priv == nullptr)
+	return false;
 
     jsval idval;
     if (!JS_IdToValue(context, id, &idval))
@@ -275,8 +299,8 @@ gjs_hunspell_spell_spell_impl(JSContext *context,
     GjsHunspellSpell *priv = priv_from_js(context, object, nullptr);
 
     if (priv == nullptr)
-	return JS_FALSE;
-    
+	return false;
+
     JSString *jsWord;
     if (!JS_ConvertArguments(context, argc, argv, "S", &jsWord)) {
 	JS_ReportError(context,
@@ -377,9 +401,6 @@ gjs_hunspell_spell_stem(JSContext *context,
 {
     GJS_HUNSPELL_METHOD_VARIABLES;
 
-    if (priv == nullptr)
-	return JS_FALSE;
-    
     const char *dic_encoding = priv->hunspell.get_dic_encoding();
     int n;
     char **slst;
@@ -426,9 +447,6 @@ gjs_hunspell_spell_generate(JSContext *context,
 {
     GJS_HUNSPELL_METHOD_VARIABLES;
 
-    if (priv == nullptr)
-	return JS_FALSE;
-    
     const char *dic_encoding = priv->hunspell.get_dic_encoding();
     int n;
     char **slst;
@@ -473,6 +491,50 @@ gjs_hunspell_spell_generate(JSContext *context,
 
     GJS_HUNSPELL_SUGGEST_FINISH;
     
+    return JS_TRUE;
+}
+
+static JSBool
+gjs_hunspell_spell_add(JSContext *context,
+		       uintN argc,
+		       jsval *vp)
+{
+    GJS_HUNSPELL_METHOD_WITH_1_ARGUMENT;
+    
+    priv->hunspell.add(word.c_str());
+
+    JS_SET_RVAL(context, vp, JSVAL_VOID);
+
+    return JS_TRUE;
+}
+
+
+static JSBool
+gjs_hunspell_spell_add_with_affix(JSContext *context,
+				  uintN argc,
+				  jsval *vp)
+{
+    GJS_HUNSPELL_METHOD_WITH_2_ARGUMENTS;
+    
+    priv->hunspell.add_with_affix(word.c_str(), word2.c_str());
+
+    JS_SET_RVAL(context, vp, JSVAL_VOID);
+
+    return JS_TRUE;
+}
+
+
+static JSBool
+gjs_hunspell_spell_remove(JSContext *context,
+			  uintN argc,
+			  jsval *vp)
+{
+    GJS_HUNSPELL_METHOD_WITH_1_ARGUMENT;
+    
+    priv->hunspell.remove(word.c_str());
+
+    JS_SET_RVAL(context, vp, JSVAL_VOID);
+
     return JS_TRUE;
 }
 
@@ -630,21 +692,21 @@ static JSFunctionSpec gjs_hunspell_spell_proto_funcs[] = {
     },
     {
 	"add",
-	gjs_hunspell_spell_unimplemented, // TODO
+	gjs_hunspell_spell_add,
 	1,
 	JSPROP_ENUMERATE
 	
     },
     {
 	"add_with_affix",
-	gjs_hunspell_spell_unimplemented, // TODO
+	gjs_hunspell_spell_add_with_affix,
 	1,
 	JSPROP_ENUMERATE
 	
     },
     {
 	"remove",
-	gjs_hunspell_spell_unimplemented, // TODO
+	gjs_hunspell_spell_remove,
 	1,
 	JSPROP_ENUMERATE
 	
