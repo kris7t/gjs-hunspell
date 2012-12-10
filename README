@@ -1,0 +1,12 @@
+Gjs bindings for Hunspell
+=========================
+
+This provides Javascript bindings of the Hunspell spell checker
+library for the GNOME Gjs engine.
+
+Installation instructions, see the file INSTALL. If you have no
+INSTALL file in the project root directory, run autotools by
+
+    $ ./autogen.sh
+
+For example usage, see examples/hunspell_test.js .
