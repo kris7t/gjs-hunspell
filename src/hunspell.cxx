@@ -21,19 +21,19 @@ static void gjs_hunspell_spell_finalize(JSContext *context,
 
 class GjsHunspellSpell {
 public:
-    Hunspell hunhandle;
+    Hunspell hunspell;
 
 private:
     GjsHunspellSpell(char *affpath,
 		     char *dpath)
-	: hunhandle(affpath, dpath)
+	: hunspell(affpath, dpath)
     {
     }
     
     GjsHunspellSpell(char *affpath,
 		     char *dpath,
 		     char *key)
-	: hunhandle(affpath, dpath, key)
+	: hunspell(affpath, dpath, key)
     {
     }
 
@@ -186,7 +186,7 @@ string_vector_to_pointer_vector(std::vector<std::string> &strings)
 #define GJS_HUNSPELL_SUGGEST_PRELUDE					\
     GJS_HUNSPELL_METHOD_VARIABLES					\
 									\
-    if (priv == NULL)							\
+    if (priv == nullptr)						\
 	return JS_FALSE;						\
 									\
     JSString *jsWord;							\
@@ -196,7 +196,7 @@ string_vector_to_pointer_vector(std::vector<std::string> &strings)
 	return JS_FALSE;						\
     }									\
 									\
-    const char *dic_encoding = priv->hunhandle.get_dic_encoding();	\
+    const char *dic_encoding = priv->hunspell.get_dic_encoding();	\
 									\
     std::string word(js_to_string_convert(context, dic_encoding,	\
 					  jsWord));			\
@@ -207,7 +207,7 @@ string_vector_to_pointer_vector(std::vector<std::string> &strings)
     JSObject *jsArray = string_vector_to_js(context, dic_encoding,	\
 					    slst, n);			\
     									\
-    priv->hunhandle.free_list(&slst, n);				\
+    priv->hunspell.free_list(&slst, n);				\
     									\
     JS_SET_RVAL(context, vp, OBJECT_TO_JSVAL(jsArray));
 
@@ -226,7 +226,7 @@ gjs_hunspell_spell_get_string_prop(JSContext *context,
     if (JSVAL_IS_STRING(*vp))
 	return JS_TRUE;
 
-    GjsHunspellSpell *priv = priv_from_js(context, object, NULL);
+    GjsHunspellSpell *priv = priv_from_js(context, object, nullptr);
 
     jsval idval;
     if (!JS_IdToValue(context, id, &idval))
@@ -235,22 +235,22 @@ gjs_hunspell_spell_get_string_prop(JSContext *context,
 	return JS_FALSE;
     int tinyid = JSVAL_TO_INT(idval);
 
-    JSString *jsString = NULL;
+    JSString *jsString = nullptr;
 
     switch (tinyid) {
     case gjs_hunspell_spell_tinyid_version: {
-	const char *version = priv->hunhandle.get_version();
+	const char *version = priv->hunspell.get_version();
 	jsString = JS_NewStringCopyZ(context, version);
 	break;
     }
     case gjs_hunspell_spell_tinyid_dic_encoding: {
-	const char *dic_encoding = priv->hunhandle.get_dic_encoding();
+	const char *dic_encoding = priv->hunspell.get_dic_encoding();
 	jsString = JS_NewStringCopyZ(context, dic_encoding);
 	break;
     }
     case gjs_hunspell_spell_tinyid_wordchars: {
 	int len;
-	unsigned short *wordchars = priv->hunhandle.get_wordchars_utf16(&len);
+	unsigned short *wordchars = priv->hunspell.get_wordchars_utf16(&len);
 	jsString = JS_NewUCStringCopyN(context, wordchars, len);
 	break;
     }
@@ -272,9 +272,9 @@ gjs_hunspell_spell_spell_impl(JSContext *context,
 {
     jsval *argv = JS_ARGV(context, vp);
 
-    GjsHunspellSpell *priv = priv_from_js(context, object, NULL);
+    GjsHunspellSpell *priv = priv_from_js(context, object, nullptr);
 
-    if (priv == NULL)
+    if (priv == nullptr)
 	return JS_FALSE;
     
     JSString *jsWord;
@@ -284,33 +284,33 @@ gjs_hunspell_spell_spell_impl(JSContext *context,
 	return JS_FALSE;
     }
 
-    const char *dic_encoding = priv->hunhandle.get_dic_encoding();
+    const char *dic_encoding = priv->hunspell.get_dic_encoding();
 
     std::string word(js_to_string_convert(context, dic_encoding, jsWord));
 
     char *root;
     int info;
-    int correct = priv->hunhandle.spell(word.c_str(), &info, &root);
+    int correct = priv->hunspell.spell(word.c_str(), &info, &root);
 
     if (correct) {
-	JSObject *hash = JS_NewObject(context, NULL, NULL, NULL);
+	JSObject *hash = JS_NewObject(context, nullptr, nullptr, nullptr);
 
 	JS_DefineProperty(context, hash, "compound",
 			  (info & SPELL_COMPOUND) ? JSVAL_TRUE : JSVAL_FALSE,
-			  NULL, NULL, JSPROP_ENUMERATE);
+			  nullptr, nullptr, JSPROP_ENUMERATE);
 
 	JS_DefineProperty(context, hash, "forbidden",
 			  (info & SPELL_FORBIDDEN) ? JSVAL_TRUE : JSVAL_FALSE,
-			  NULL, NULL, JSPROP_ENUMERATE);
+			  nullptr, nullptr, JSPROP_ENUMERATE);
 
 	JS_DefineProperty(context, hash, "warn",
 			  (info & SPELL_WARN) ? JSVAL_TRUE : JSVAL_FALSE,
-			  NULL, NULL, JSPROP_ENUMERATE);
+			  nullptr, nullptr, JSPROP_ENUMERATE);
 
-	if (root != NULL) {
+	if (root != nullptr) {
 	    JSString *jsRoot = string_to_js_convert(context, dic_encoding, root);
 	    JS_DefineProperty(context, hash, "root", STRING_TO_JSVAL(jsRoot),
-			      NULL, NULL, JSPROP_ENUMERATE);
+			      nullptr, nullptr, JSPROP_ENUMERATE);
 	    // We still have ownership of root.
 	    free(root);
 	}
@@ -349,7 +349,7 @@ gjs_hunspell_spell_suggest(JSContext *context,
 {
     GJS_HUNSPELL_SUGGEST_PRELUDE;
 
-    int n = priv->hunhandle.suggest(&slst, word.c_str());
+    int n = priv->hunspell.suggest(&slst, word.c_str());
 
     GJS_HUNSPELL_SUGGEST_FINISH;
 
@@ -363,7 +363,7 @@ gjs_hunspell_spell_analyze(JSContext *context,
 {
     GJS_HUNSPELL_SUGGEST_PRELUDE;
 
-    int n = priv->hunhandle.analyze(&slst, word.c_str());
+    int n = priv->hunspell.analyze(&slst, word.c_str());
 
     GJS_HUNSPELL_SUGGEST_FINISH;
 
@@ -377,10 +377,10 @@ gjs_hunspell_spell_stem(JSContext *context,
 {
     GJS_HUNSPELL_METHOD_VARIABLES;
 
-    if (priv == NULL)
+    if (priv == nullptr)
 	return JS_FALSE;
     
-    const char *dic_encoding = priv->hunhandle.get_dic_encoding();
+    const char *dic_encoding = priv->hunspell.get_dic_encoding();
     int n;
     char **slst;
 
@@ -404,14 +404,14 @@ gjs_hunspell_spell_stem(JSContext *context,
 							     jsObj));
 	std::vector<char *> morph(string_vector_to_pointer_vector(strings));
 	
-	n = priv->hunhandle.stem(&slst, morph.data(), morph.size());
+	n = priv->hunspell.stem(&slst, morph.data(), morph.size());
 	    
     } else { /* is a word */
 	JSString *jsWord = JS_ValueToString(context, OBJECT_TO_JSVAL(jsObj));
 	std::string word(js_to_string_convert(context, dic_encoding,
 					      jsWord));
 
-	n = priv->hunhandle.stem(&slst, word.c_str());
+	n = priv->hunspell.stem(&slst, word.c_str());
     }
 
     GJS_HUNSPELL_SUGGEST_FINISH;
@@ -426,10 +426,10 @@ gjs_hunspell_spell_generate(JSContext *context,
 {
     GJS_HUNSPELL_METHOD_VARIABLES;
 
-    if (priv == NULL)
+    if (priv == nullptr)
 	return JS_FALSE;
     
-    const char *dic_encoding = priv->hunhandle.get_dic_encoding();
+    const char *dic_encoding = priv->hunspell.get_dic_encoding();
     int n;
     char **slst;
 
@@ -460,7 +460,7 @@ gjs_hunspell_spell_generate(JSContext *context,
 							     jsObj));
 	std::vector<char *> morph(string_vector_to_pointer_vector(strings));
 	
-	n = priv->hunhandle.generate(&slst, word.c_str(),
+	n = priv->hunspell.generate(&slst, word.c_str(),
 				     morph.data(), morph.size());
 	    
     } else { /* is a word */
@@ -468,7 +468,7 @@ gjs_hunspell_spell_generate(JSContext *context,
 	std::string word2(js_to_string_convert(context, dic_encoding,
 					       jsWord2));
 
-	n = priv->hunhandle.generate(&slst, word.c_str(), word2.c_str());
+	n = priv->hunspell.generate(&slst, word.c_str(), word2.c_str());
     }
 
     GJS_HUNSPELL_SUGGEST_FINISH;
@@ -490,17 +490,14 @@ static JSBool
 gjs_hunspell_spell_constructor(JSContext *context,
 			       uintN argc,
 			       jsval *vp){
-    GJS_NATIVE_CONSTRUCTOR_VARIABLES(hunspell_spell)
+    GJS_NATIVE_CONSTRUCTOR_VARIABLES(hunspell_spell);
 
     GJS_NATIVE_CONSTRUCTOR_PRELUDE(hunspell_spell);
 
-    // For sake of consistency, use g_slice allocator for the priv object.
-    GjsHunspellSpell *priv = g_slice_new(GjsHunspellSpell);
-    g_assert(priv_from_js(context, object, NULL) == NULL);
-    JS_SetPrivate(context, object, priv);
+    GjsHunspellSpell *priv = nullptr;
 
     JSString *jsAffpath, *jsDpath, *jsKey;
-    char *affpath = NULL, *dpath = NULL, *key = NULL;
+    char *affpath = nullptr, *dpath = nullptr, *key = nullptr;
     if (argc < 2)
     {
 	JS_ReportError(context,
@@ -515,7 +512,7 @@ gjs_hunspell_spell_constructor(JSContext *context,
 	}
 	affpath = JS_EncodeString(context, jsAffpath);
 	dpath = JS_EncodeString(context, jsDpath);
-        new (priv) GjsHunspellSpell(affpath, dpath);
+        priv = new GjsHunspellSpell(affpath, dpath);
     } else { /* argc >= 3 */
 	if (!JS_ConvertArguments(context, argc, argv, "SSS",
 				 &jsAffpath, &jsDpath, &jsKey)) {
@@ -525,7 +522,7 @@ gjs_hunspell_spell_constructor(JSContext *context,
 	affpath = JS_EncodeString(context, jsAffpath);
 	dpath = JS_EncodeString(context, jsDpath);
 	key = JS_EncodeString(context, jsKey);
-	new (priv) GjsHunspellSpell(affpath, dpath, key);
+	priv = new GjsHunspellSpell(affpath, dpath, key);
     }
 
     if (affpath)
@@ -535,12 +532,16 @@ gjs_hunspell_spell_constructor(JSContext *context,
     if (key)
 	JS_free(context, key);
 
+    g_assert(priv != nullptr);
+    g_assert(priv_from_js(context, object, nullptr) == nullptr);
+    JS_SetPrivate(context, object, priv);
+
     GJS_NATIVE_CONSTRUCTOR_FINISH(hunspell_spell);
 
     return JS_TRUE;
 
 fail:
-    g_slice_free(GjsHunspellSpell, priv);
+    delete priv;
 
     return JS_FALSE;
 }
@@ -549,9 +550,9 @@ static void
 gjs_hunspell_spell_finalize(JSContext *context,
 			    JSObject *object)
 {
-    GjsHunspellSpell *priv = priv_from_js(context, object, NULL);
+    GjsHunspellSpell *priv = priv_from_js(context, object, nullptr);
     if (priv) {
-	JS_SetPrivate(context, object, NULL);
+	JS_SetPrivate(context, object, nullptr);
 	priv->~GjsHunspellSpell();
 	g_slice_free(GjsHunspellSpell, priv);
     }
@@ -564,7 +565,7 @@ static JSPropertySpec gjs_hunspell_spell_proto_props[] = {
 	JSPROP_ENUMERATE |
 	JSPROP_READONLY,
 	gjs_hunspell_spell_get_string_prop,
-	NULL
+	nullptr
     },
     {
 	"dic_encoding",
@@ -572,7 +573,7 @@ static JSPropertySpec gjs_hunspell_spell_proto_props[] = {
 	JSPROP_ENUMERATE |
 	JSPROP_READONLY,
 	gjs_hunspell_spell_get_string_prop,
-	NULL
+	nullptr
     },
     {
 	"wordchars",
@@ -580,9 +581,9 @@ static JSPropertySpec gjs_hunspell_spell_proto_props[] = {
 	JSPROP_ENUMERATE |
 	JSPROP_READONLY,
 	gjs_hunspell_spell_get_string_prop,
-	NULL
+	nullptr
     },
-    { NULL, 0, 0, NULL, NULL }
+    { nullptr, 0, 0, nullptr, nullptr }
 };
 
 static JSFunctionSpec gjs_hunspell_spell_proto_funcs[] = {
@@ -648,7 +649,7 @@ static JSFunctionSpec gjs_hunspell_spell_proto_funcs[] = {
 	JSPROP_ENUMERATE
 	
     },
-    { NULL, NULL, 0, 0 }
+    { nullptr, nullptr, 0, 0 }
 };
 
 static JSClass gjs_hunspell_spell_class = {
@@ -662,13 +663,13 @@ static JSClass gjs_hunspell_spell_class = {
     JS_ResolveStub,
     JS_ConvertStub,
     gjs_hunspell_spell_finalize,
-    NULL,
-    NULL,
+    nullptr,
+    nullptr,
     gjs_hunspell_spell_call,
-    NULL,
-    NULL,
-    NULL,
-    NULL
+    nullptr,
+    nullptr,
+    nullptr,
+    nullptr
 };
 
 static GjsHunspellSpell *
@@ -692,25 +693,25 @@ gjs_define_hunspell_stuff(JSContext *context,
     jsval val;
     if (!gjs_object_get_property(context, global,
 				 gjs_hunspell_spell_class.name, &val)) {
-	JSObject *prototype = JS_InitClass(context, global, NULL,
+	JSObject *prototype = JS_InitClass(context, global, nullptr,
 					   &gjs_hunspell_spell_class,
 					   gjs_hunspell_spell_constructor,
 					   2,
 					   &gjs_hunspell_spell_proto_props[0],
 					   &gjs_hunspell_spell_proto_funcs[0],
-					   NULL, NULL);
+					   nullptr, nullptr);
 
-	if (prototype == NULL)
+	if (prototype == nullptr)
 	    return JS_FALSE;
 	
-	if (!gjs_object_require_property(context, global, NULL,
+	if (!gjs_object_require_property(context, global, nullptr,
 					 gjs_hunspell_spell_class.name,
 					 &val))
 	    return JS_FALSE;
 
 	if (!JS_DefineProperty(context, module,
 			       gjs_hunspell_spell_class.name,
-			       val, NULL, NULL,
+			       val, nullptr, nullptr,
 			       GJS_MODULE_PROP_FLAGS))
 	    return false;
     }
