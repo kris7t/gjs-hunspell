@@ -869,8 +869,7 @@ gjs_hunspell_spell_finalize(JSContext *context,
     GjsHunspellSpell *priv = priv_from_js(context, object, nullptr);
     if (priv) {
 	JS_SetPrivate(context, object, nullptr);
-	priv->~GjsHunspellSpell();
-	g_slice_free(GjsHunspellSpell, priv);
+	delete priv;
     }
 }
 
