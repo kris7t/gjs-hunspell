@@ -101,9 +101,13 @@ string_to_js_convert(JSContext *context,
     iconv_close(cd);
     
     int outlen = (sizeof(buf) - outbytesleft) / 2;
-    JSString *js = JS_NewUCStringCopyN(context,
-				       reinterpret_cast<unsigned short *>(buf),
-				       outlen);
+    auto result = reinterpret_cast<unsigned short *>(&buf[0]);
+    if (result[0] == static_cast<unsigned short>(0xfeffu)) {
+        // We don't need the byte-order mark at the beginning.
+        --outlen;
+        ++result;
+    }
+    JSString *js = JS_NewUCStringCopyN(context, result, outlen);
 
     return js;
 }
